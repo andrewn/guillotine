@@ -5,6 +5,10 @@ module Guillotine
       end
     end
 
+    DEFAULT_REQUEST_HEADERS = {
+      'Access-Control-Allow-Origin' => '*'
+    }
+
     # This is the public API to the Guillotine service.  Wire this up to Sinatra
     # or whatever.  Every public method should return a compatible Rack Response:
     # [Integer Status, Hash headers, String body].  
@@ -26,9 +30,9 @@ module Guillotine
     # or 404 on a miss.
     def get(code)
       if url = @db.find(code)
-        [302, {"Location" => @db.parse_url(url).to_s}]
+        [302, headers({"Location" => @db.parse_url(url).to_s})]
       else
-        [404, {}, "No url found for #{code}"]
+        [404, headers, "No url found for #{code}"]
       end
     end
 
@@ -47,12 +51,12 @@ module Guillotine
       
       begin
         if code = @db.add(url.to_s, code)
-          [201, {"Location" => code}]
+          [201, headers({"Location" => code})]
         else
-          [422, {}, "Unable to shorten #{url}"]
+          [422, headers, "Unable to shorten #{url}"]
         end
       rescue DuplicateCodeError => err
-        [422, {}, err.to_s]
+        [422, headers, err.to_s]
       end
     end
 
@@ -64,7 +68,7 @@ module Guillotine
     # Returns a 422 Rack::Response if the host is invalid, or nil.
     def check_host(url)
       if url.scheme !~ /^https?$/
-        [422, {}, "Invalid url: #{url}"]
+        [422, headers, "Invalid url: #{url}"]
       else
         @host_check.call url
       end
@@ -95,7 +99,7 @@ module Guillotine
     def build_host_regex_check(regex)
       @host_check = lambda do |url|
         if url.host.to_s !~ regex
-          [422, {}, "URL must match #{regex.inspect}"]
+          [422, headers, "URL must match #{regex.inspect}"]
         end
       end
     end
@@ -108,7 +112,7 @@ module Guillotine
     def build_host_string_check(hostname)
       @host_check = lambda do |url|
         if url.host != hostname
-          [422, {}, "URL must be from #{hostname}"]
+          [422, headers, "URL must be from #{hostname}"]
         end
       end
     end
@@ -127,6 +131,10 @@ module Guillotine
         str.gsub! /(\#|\?).*/, ''
         Addressable::URI.parse str
       end
+    end
+
+    def headers(headers={})
+      DEFAULT_REQUEST_HEADERS.merge(headers)
     end
   end
 end

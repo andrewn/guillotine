@@ -110,6 +110,18 @@ module Guillotine
       status, head, body = service.create('http://www.abc.com/def')
       assert_equal 201, status
     end
+
+    def test_allows_all_domains_via_cors
+      url  = 'http://github.com'
+      code = @db.add url
+      allow_header      = 'Access-Control-Allow-Origin'
+      allow_all_origins = '*'
+
+      status, head, body = @service.create(url + '#a=1')
+      assert head[allow_header]
+      assert_equal allow_all_origins, head[allow_header]
+    end
+
   end
 end
 
